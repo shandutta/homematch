@@ -1,4 +1,4 @@
-// api/zillow-search.js - Enhanced version with pagination
+// api/zillow-search.js - Simplified version with fewer filters
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -11,19 +11,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get parameters
+    // Get parameters - only essential ones
     const { 
       location = 'Palo Alto, CA', 
       priceMin = '1800000', 
       priceMax = '2300000',
-      page = '1',
-      bedsMin = '3',
-      bathsMin = '2',
-      sqftMin = '1800'
+      page = '1'
     } = req.query;
     
     console.log('API Request:', { location, priceMin, priceMax, page });
-    console.log('Has API Key:', !!process.env.RAPIDAPI_KEY);
     
     // Check if API key exists
     if (!process.env.RAPIDAPI_KEY) {
@@ -33,21 +29,17 @@ export default async function handler(req, res) {
       });
     }
     
-    // Build URL with more parameters
+    // Build URL with minimal parameters
     const url = new URL('https://zillow56.p.rapidapi.com/search');
     url.searchParams.append('location', location);
     url.searchParams.append('status', 'forSale');
     url.searchParams.append('price_min', priceMin);
     url.searchParams.append('price_max', priceMax);
-    url.searchParams.append('page', page);
     
-    // Add more filters if available
-    if (bedsMin) url.searchParams.append('beds_min', bedsMin);
-    if (bathsMin) url.searchParams.append('baths_min', bathsMin);
-    if (sqftMin) url.searchParams.append('sqft_min', sqftMin);
-    
-    // Sort by newest first to get fresh listings
-    url.searchParams.append('sort', 'days_on_zillow_asc');
+    // Only add page if it's not page 1
+    if (page !== '1') {
+      url.searchParams.append('page', page);
+    }
     
     console.log('Fetching from:', url.toString());
     
@@ -62,7 +54,6 @@ export default async function handler(req, res) {
     
     console.log('Zillow Response Status:', response.status);
     
-    // Check if response is ok
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Zillow API Error:', errorText);
@@ -75,20 +66,31 @@ export default async function handler(req, res) {
     
     // Parse response
     const data = await response.json();
-    console.log('Properties found:', data.totalResultCount || 0);
-    console.log('Current page:', data.currentPage || 1);
-    console.log('Total pages:', data.totalPages || 1);
+    console.log('Raw results count:', data.results?.length || 0);
+    console.log('Total result count:', data.totalResultCount || 0);
+    
+    // Simple pagination info
+    const resultsPerPage = data.results?.length || 0;
+    const totalResults = data.totalResultCount || resultsPerPage;
+    const currentPageNum = parseInt(page);
+    const estimatedTotalPages = Math.ceil(totalResults / (resultsPerPage || 10));
     
     // Add pagination info
     const enhancedData = {
       ...data,
       pagination: {
-        currentPage: parseInt(page),
-        totalPages: data.totalPages || 1,
-        hasMore: data.totalPages > parseInt(page),
-        totalResults: data.totalResultCount || 0
+        currentPage: currentPageNum,
+        totalPages: estimatedTotalPages,
+        hasMore: currentPageNum < estimatedTotalPages,
+        totalResults: totalResults,
+        resultsThisPage: resultsPerPage
       }
     };
+    
+    console.log('Enhanced data:', {
+      resultsReturned: resultsPerPage,
+      pagination: enhancedData.pagination
+    });
     
     // Return enhanced data
     res.status(200).json(enhancedData);
@@ -97,8 +99,7 @@ export default async function handler(req, res) {
     console.error('Handler Error:', error);
     res.status(500).json({ 
       error: 'Failed to fetch data',
-      message: error.message,
-      stack: error.stack
+      message: error.message
     });
   }
 }
