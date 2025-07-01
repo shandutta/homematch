@@ -310,6 +310,22 @@
                 ❤️
             </button>
         </div>
+        
+        <!-- Load More -->
+        <div style="text-align: center; margin-top: 2rem;">
+            <button id="loadMoreBtn" onclick="loadMore()" style="
+                display: none;
+                background: var(--primary);
+                color: white;
+                border: none;
+                padding: 0.75rem 2rem;
+                border-radius: 0.5rem;
+                cursor: pointer;
+                font-size: 1rem;
+            ">
+                Load More Properties
+            </button>
+        </div>
     </main>
 
     <script>
@@ -320,6 +336,9 @@
             viewed: 0,
             liked: 0
         };
+        let currentPage = 1;
+        let hasMorePages = false;
+        let isLoading = false;
 
         // User settings (with defaults)
         let userSettings = {
@@ -420,6 +439,12 @@
                 if (data.results && data.results.length > 0) {
                     console.log(`Found ${data.results.length} properties`);
                     
+                    // Check pagination info
+                    if (data.pagination) {
+                        hasMorePages = data.pagination.hasMore;
+                        console.log(`Page ${data.pagination.currentPage} of ${data.pagination.totalPages}`);
+                    }
+                    
                     // Transform Zillow data to our format
                     properties = data.results.map(prop => ({
                         id: prop.zpid,
@@ -444,8 +469,15 @@
         // Display property
         function displayProperty(index) {
             if (index >= properties.length) {
-                showError('No more properties to show! Come back later for more.');
-                document.getElementById('propertyCard').style.display = 'none';
+                // Check if we can load more
+                if (hasMorePages && !isLoading) {
+                    showError('You\'ve viewed all current properties!');
+                    document.getElementById('propertyCard').style.display = 'none';
+                    document.getElementById('loadMoreBtn').style.display = 'inline-block';
+                } else {
+                    showError('No more properties to show! Come back later for more.');
+                    document.getElementById('propertyCard').style.display = 'none';
+                }
                 return;
             }
 
@@ -455,7 +487,7 @@
             card.innerHTML = `
                 <img src="${property.image}" alt="Property" class="property-image" onerror="this.src='https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800'">
                 <div class="property-details">
-                    <div class="property-price">$${property.price.toLocaleString()}</div>
+                    <div class="property-price">${property.price.toLocaleString()}</div>
                     <div class="property-address">${property.address}, ${property.city}</div>
                     <div class="property-features">
                         <div class="feature">🛏️ ${property.beds} beds</div>
@@ -464,6 +496,8 @@
                     </div>
                     <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
                         <strong>Match Score: ${property.match}%</strong>
+                        ${property.neighborhood ? `<div style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem;">📍 ${property.neighborhood}</div>` : ''}
+                        ${property.daysOnMarket !== undefined ? `<div style="color: var(--text-secondary); font-size: 0.875rem;">🕐 ${property.daysOnMarket} days on market</div>` : ''}
                     </div>
                 </div>
             `;
@@ -496,7 +530,7 @@
 
         // Update stats display
         function updateStats() {
-            document.getElementById('newListings').textContent = properties.length;
+            document.getElementById('newListings').textContent = `${properties.length}${hasMorePages ? '+' : ''}`;
             document.getElementById('matches').textContent = properties.filter(p => p.match >= 75).length;
             document.getElementById('viewed').textContent = stats.viewed;
             document.getElementById('liked').textContent = stats.liked;
@@ -516,6 +550,71 @@
             const errorDiv = document.getElementById('errorDisplay');
             errorDiv.innerHTML = `<div class="error-message">${message}</div>`;
             errorDiv.style.display = 'block';
+        }
+
+        // Load more properties
+        async function loadMore() {
+            if (isLoading || !hasMorePages) return;
+            
+            isLoading = true;
+            document.getElementById('loadMoreBtn').textContent = 'Loading...';
+            document.getElementById('loadMoreBtn').disabled = true;
+            
+            try {
+                currentPage++;
+                const location = userSettings.neighborhoods && userSettings.neighborhoods[0] 
+                    ? userSettings.neighborhoods[0] 
+                    : 'Palo Alto, CA';
+                
+                const response = await fetch(
+                    `/api/zillow-search?location=${encodeURIComponent(location)}&priceMin=${userSettings.priceMin}&priceMax=${userSettings.priceMax}&page=${currentPage}`
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    console.log(`Loaded ${data.results.length} more properties from page ${currentPage}`);
+                    
+                    // Update pagination status
+                    hasMorePages = data.pagination?.hasMore || false;
+                    
+                    // Transform and append new properties
+                    const newProperties = data.results.map(prop => ({
+                        id: prop.zpid,
+                        price: prop.price || 0,
+                        address: prop.streetAddress || prop.address || 'No address',
+                        city: prop.city || 'Bay Area',
+                        image: prop.imgSrc || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
+                        beds: prop.bedrooms || 3,
+                        baths: prop.bathrooms || 2,
+                        sqft: prop.livingArea || 2000,
+                        match: Math.floor(Math.random() * 15) + 80
+                    }));
+                    
+                    properties = [...properties, ...newProperties];
+                    updateStats();
+                    
+                    // Hide error, show card, hide button
+                    document.getElementById('errorDisplay').style.display = 'none';
+                    document.getElementById('loadMoreBtn').style.display = 'none';
+                    displayProperty(currentIndex);
+                } else {
+                    hasMorePages = false;
+                    showError('No more properties found.');
+                }
+            } catch (error) {
+                console.error('Error loading more:', error);
+                showError('Failed to load more properties. Try again later.');
+                currentPage--; // Revert page increment
+            } finally {
+                isLoading = false;
+                document.getElementById('loadMoreBtn').textContent = 'Load More Properties';
+                document.getElementById('loadMoreBtn').disabled = false;
+            }
         }
 
         // Start the app when page loads
