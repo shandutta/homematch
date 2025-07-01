@@ -435,28 +435,46 @@
         // Fetch properties from backend
         async function fetchProperties() {
             try {
-                console.log('Fetching real properties...');
+                console.log('Fetching properties from all neighborhoods...');
                 
-                // Call your Vercel API
-                // frontend/index.html - Update the fetch URL
-                const response = await fetch('/api/zillow-search?location=Palo%20Alto,%20CA&priceMin=1800000&priceMax=2300000');
+                // Show loading with status
+                document.getElementById('loadingState').innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 1rem;">Searching multiple neighborhoods...</p>
+                `;
+                
+                // Call new multi-neighborhood endpoint
+                const response = await fetch('/api/properties');
                 const data = await response.json();
                 
                 if (data.results && data.results.length > 0) {
-                    console.log(`Found ${data.results.length} real properties!`);
+                    console.log(`Found ${data.results.length} total properties!`);
                     
-                    // Transform Zillow data to our format
+                    // Show neighborhood breakdown
+                    if (data.neighborhoodCounts) {
+                        console.log('Properties by neighborhood:');
+                        data.neighborhoodCounts.forEach(n => {
+                            if (n.count > 0) console.log(`  ${n.name}: ${n.count}`);
+                        });
+                    }
+                    
+                    // Transform to our format
                     properties = data.results.map(prop => ({
                         id: prop.zpid,
                         price: prop.price || 0,
                         address: prop.streetAddress || prop.address || 'No address',
-                        city: prop.city || 'Bay Area',
+                        city: prop.neighborhood || prop.city || 'Bay Area',
                         image: prop.imgSrc || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
                         beds: prop.bedrooms || 3,
                         baths: prop.bathrooms || 2,
                         sqft: prop.livingArea || 2000,
-                        match: Math.floor(Math.random() * 15) + 80  // 80-95% match
+                        match: Math.floor(Math.random() * 15) + 80,
+                        zpid: prop.zpid,
+                        url: prop.detailUrl
                     }));
+                    
+                    // Shuffle for variety
+                    properties.sort(() => Math.random() - 0.5);
                     
                     return Promise.resolve();
                 } else {
@@ -468,7 +486,7 @@
                 properties = mockProperties;
                 return Promise.resolve();
             }
-        }
+        }       
         
         // Display property
         function displayProperty(index) {
