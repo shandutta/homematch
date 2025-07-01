@@ -502,6 +502,42 @@
         }
 
         // Handle swipe actions
+
+        // Add this NEW function around line 410 (before handleReject)
+        async function saveSwipe(property, vote) {
+        try {
+            await fetch('/api/swipe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                zpid: property.id,
+                vote,
+                propertyData: property,
+                userEmail: 'shan@example.com' // TODO: Get from auth
+            })
+            });
+        } catch (error) {
+            console.error('Failed to save swipe:', error);
+        }
+        }
+
+        // UPDATE your existing handleReject (line ~415)
+        function handleReject() {
+        const property = properties[currentIndex];  // ADD this line
+        saveSwipe(property, false);                 // ADD this line
+        console.log('Property rejected');
+        nextProperty();
+        }
+
+        // UPDATE your existing handleLike (line ~420)
+        function handleLike() {
+        const property = properties[currentIndex];  // ADD this line
+        saveSwipe(property, true);                  // ADD this line
+        console.log('Property liked');
+        stats.liked++;
+        nextProperty();
+        }
+
         function handleReject() {
             console.log('Property rejected');
             nextProperty();
