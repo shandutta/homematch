@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     }
     
     const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_KEY;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
     
     // Clean up property data - ensure all values are valid
     const cleanPropertyData = {

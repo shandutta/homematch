@@ -727,24 +727,56 @@
             const property = properties[index];
             const card = document.getElementById('propertyCard');
             
-            card.innerHTML = `
-                <img src="${property.image}" alt="Property" class="property-image" 
-                     onerror="this.src='https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800'">
-                <div class="property-details">
-                    <div class="property-price">$${property.price.toLocaleString()}</div>
-                    <div>${property.address}, ${property.city}</div>
-                    <div class="property-features">
-                        <div class="feature">🛏️ ${property.beds} beds</div>
-                        <div class="feature">🚿 ${property.baths} baths</div>
-                        <div class="feature">📏 ${property.sqft.toLocaleString()} sqft</div>
-                    </div>
-                    <div class="match-score">
-                        <strong>Match Score: ${property.match}%</strong>
-                        ${property.neighborhood ? `<div style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">📍 ${property.neighborhood}</div>` : ''}
-                    </div>
-                </div>
+            // NEW - SAFE FROM XSS
+            // Clear card
+            card.innerHTML = '';
+
+            // Add image
+            const img = document.createElement('img');
+            img.src = property.image;
+            img.className = 'property-image';
+            img.onerror = function() { this.src = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800'; };
+            card.appendChild(img);
+
+            // Add details container
+            const details = document.createElement('div');
+            details.className = 'property-details';
+
+            // Add price
+            const priceDiv = document.createElement('div');
+            priceDiv.className = 'property-price';
+            priceDiv.textContent = `$${property.price.toLocaleString()}`;
+            details.appendChild(priceDiv);
+
+            // Add address
+            const addressDiv = document.createElement('div');
+            addressDiv.textContent = `${property.address}, ${property.city}`;
+            details.appendChild(addressDiv);
+
+            // Add features
+            const featuresDiv = document.createElement('div');
+            featuresDiv.className = 'property-features';
+            featuresDiv.innerHTML = `
+            <div class="feature">🛏️ ${parseInt(property.beds)} beds</div>
+            <div class="feature">🚿 ${parseFloat(property.baths)} baths</div>
+            <div class="feature">📏 ${parseInt(property.sqft).toLocaleString()} sqft</div>
             `;
-            
+            details.appendChild(featuresDiv);
+
+            // Add match score
+            const matchDiv = document.createElement('div');
+            matchDiv.className = 'match-score';
+            matchDiv.innerHTML = `<strong>Match Score: ${parseInt(property.match)}%</strong>`;
+            if (property.neighborhood) {
+            const neighborhoodDiv = document.createElement('div');
+            neighborhoodDiv.style.cssText = 'color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;';
+            neighborhoodDiv.textContent = `📍 ${property.neighborhood}`;
+            matchDiv.appendChild(neighborhoodDiv);
+            }
+            details.appendChild(matchDiv);
+
+            card.appendChild(details);
+
             // Reset animation classes
             card.classList.remove('swiping-left', 'swiping-right');
             card.style.display = 'block';
