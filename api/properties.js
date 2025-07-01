@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     
     // Fetch one at a time to see which fails
     const results = [];
-    for (const location of testNeighborhoods) {
+    for (const location of neighborhoodList) {
       try {
         const url = `https://${req.headers.host}/api/zillow-search?location=${encodeURIComponent(location)}&priceMin=1800000&priceMax=2300000`;
         console.log('Fetching:', url);
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
       results: allProperties,
       totalCount: allProperties.length,
       debug: {
-        neighborhoodsTried: testNeighborhoods.length,
+        neighborhoodsTried: neighborhoodList.length,
         resultsPerNeighborhood: results.map(r => r.results?.length || 0)
       }
     });
