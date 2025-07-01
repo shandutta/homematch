@@ -745,15 +745,55 @@
         }
 
         // Handle swipe actions
-        function handleReject() {
+        async function handleReject() {
             console.log('Property rejected');
+            
+            // Save swipe to database
+            if (currentIndex < properties.length) {
+                await saveSwipe(properties[currentIndex], false);
+            }
+            
             nextProperty();
         }
 
-        function handleLike() {
+        async function handleLike() {
             console.log('Property liked');
             stats.liked++;
+            
+            // Save swipe to database
+            if (currentIndex < properties.length) {
+                await saveSwipe(properties[currentIndex], true);
+            }
+            
             nextProperty();
+        }
+        
+        // Save swipe to Supabase
+        async function saveSwipe(property, vote) {
+            try {
+                const response = await fetch('/api/swipe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        zpid: property.id,
+                        vote: vote,
+                        propertyData: property,
+                        userEmail: 'default@homematch.com' // TODO: Get from auth
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to save swipe');
+                }
+                
+                const result = await response.json();
+                console.log('Swipe saved:', result);
+            } catch (error) {
+                console.error('Error saving swipe:', error);
+                // Don't block the UI if save fails
+            }
         }
 
         function nextProperty() {
