@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Swipe API</title>
+    <style>
+        body { font-family: monospace; padding: 20px; max-width: 800px; margin: 0 auto; }
+        button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f4f4f4; padding: 10px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>Test Swipe API</h1>
+    
+    <div>
+        <button onclick="testDebug()">1. Test Debug Endpoint</button>
+        <button onclick="testHealth()">2. Test Health Check</button>
+        <button onclick="testSwipe()">3. Test Swipe (with auth)</button>
+        <button onclick="testSwipeNoAuth()">4. Test Swipe (no auth)</button>
+    </div>
+    
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, data, isError = false) {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <h3 class="${isError ? 'error' : 'success'}">${message}</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            output.appendChild(div);
+        }
+        
+        function generateSessionToken() {
+            const timestamp = Date.now().toString();
+            const signature = btoa(timestamp + 'dev-secret').replace(/[^a-zA-Z0-9]/g, '');
+            return `${timestamp}.${signature}`;
+        }
+        
+        async function testDebug() {
+            try {
+                const response = await fetch('/api/debug-supabase');
+                const data = await response.json();
+                log('Debug Endpoint Response:', data, !response.ok);
+            } catch (error) {
+                log('Debug Endpoint Error:', { error: error.message }, true);
+            }
+        }
+        
+        async function testHealth() {
+            try {
+                const response = await fetch('/api/health-check');
+                const data = await response.json();
+                log('Health Check Response:', data, !response.ok);
+            } catch (error) {
+                log('Health Check Error:', { error: error.message }, true);
+            }
+        }
+        
+        async function testSwipe() {
+            try {
+                const token = generateSessionToken();
+                const response = await fetch('/api/swipe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Session-Token': token
+                    },
+                    body: JSON.stringify({
+                        zpid: 'test-' + Date.now(),
+                        vote: true,
+                        propertyData: {
+                            address: '123 Test St',
+                            city: 'Palo Alto',
+                            price: 2000000,
+                            beds: 3,
+                            baths: 2,
+                            sqft: 2000,
+                            image: 'https://via.placeholder.com/400',
+                            match: 85,
+                            neighborhood: 'Test Neighborhood'
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                log(`Swipe API Response (${response.status}):`, data, !response.ok);
+            } catch (error) {
+                log('Swipe API Error:', { error: error.message }, true);
+            }
+        }
+        
+        async function testSwipeNoAuth() {
+            try {
+                const response = await fetch('/api/swipe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        zpid: 'test-' + Date.now(),
+                        vote: false,
+                        propertyData: {
+                            address: '456 No Auth Ave',
+                            city: 'San Jose',
+                            price: 1800000,
+                            beds: 4,
+                            baths: 3,
+                            sqft: 2500
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                log(`No Auth Test (${response.status}):`, data, response.status !== 401);
+            } catch (error) {
+                log('No Auth Test Error:', { error: error.message }, true);
+            }
+        }
+    </script>
+</body>
+</html>
