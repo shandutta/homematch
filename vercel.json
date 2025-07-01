@@ -1,0 +1,13 @@
+{
+  "buildCommand": "",
+  "outputDirectory": "frontend",
+  "functions": {
+    "api/zillow-search.js": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/frontend/$1" }
+  ]
+}
