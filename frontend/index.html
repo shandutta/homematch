@@ -438,6 +438,7 @@
                 console.log('Fetching real properties...');
                 
                 // Call your Vercel API
+                // frontend/index.html - Update the fetch URL
                 const response = await fetch('/api/zillow-search?location=Palo%20Alto,%20CA&priceMin=1800000&priceMax=2300000');
                 const data = await response.json();
                 
