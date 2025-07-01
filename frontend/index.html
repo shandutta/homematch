@@ -494,6 +494,17 @@
     </div>
 
     <script>
+        // Generate session token (temporary auth solution)
+        function generateSessionToken() {
+            const timestamp = Date.now().toString();
+            // In production, this should come from your auth provider
+            const secret = 'dev-secret'; // This should match process.env.SESSION_SECRET
+            
+            // Simple hash for demo - real auth should use proper JWT/OAuth
+            const signature = btoa(timestamp + secret).replace(/[^a-zA-Z0-9]/g, '');
+            return `${timestamp}.${signature}`;
+        }
+        
         // App State
         let properties = [];
         let currentIndex = 0;
@@ -828,29 +839,55 @@
             try {
                 showNotification(vote ? '❤️ Saving like...' : '❌ Saving reject...', false);
                 
-                const response = await fetch('/api/swipe', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        zpid: property.id,
-                        vote: vote,
-                        propertyData: property,
-                        userEmail: 'default@homematch.com'
-                    })
-                });
+                // Generate session token (temporary auth)
+                const sessionToken = generateSessionToken();
                 
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('Swipe saved:', result);
-                    showNotification(vote ? '❤️ Liked!' : '❌ Rejected!', false);
+                // Try endpoints in order until one works
+                const endpoints = ['/api/swipe', '/api/swipe-fixed', '/api/swipe-v2', '/api/swipe-simple'];
+                let response;
+                
+                for (const endpoint of endpoints) {
+                    try {
+                        response = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Session-Token': sessionToken
+                            },
+                            body: JSON.stringify({
+                                zpid: property.id,
+                                vote: vote,
+                                propertyData: property
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            console.log(`Success with ${endpoint}`);
+                            break;
+                        } else if (response.status < 500) {
+                            // Client error, don't try other endpoints
+                            break;
+                        }
+                    } catch (err) {
+                        console.error(`Failed ${endpoint}:`, err);
+                    }
+                }
+                
+                if (response && response.ok) {
+                    const data = await response.json();
+                    console.log('Swipe saved:', data);
+                    if (data.warning) {
+                        showNotification(vote ? '❤️ Liked! (not saved to DB)' : '❌ Rejected! (not saved to DB)', false);
+                    } else {
+                        showNotification(vote ? '❤️ Liked!' : '❌ Rejected!', false);
+                    }
                 } else {
-                    throw new Error('Failed to save');
+                    const errorData = response ? await response.json() : { error: 'All endpoints failed' };
+                    throw new Error(errorData.message || errorData.error || 'Failed to save');
                 }
             } catch (error) {
                 console.error('Error saving swipe:', error);
-                showNotification('⚠️ Failed to save swipe', true);
+                showNotification('⚠️ Swipe not saved - ' + error.message, true);
             }
         }
 
