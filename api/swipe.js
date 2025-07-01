@@ -1,69 +1,65 @@
-// api/swipe.js - FIXED VERSION
+// api/swipe.js - Simple working version
+const { createClient } = require('@supabase/supabase-js');
+
+// Create Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_ANON_KEY || ''
+);
+
 export default async function handler(req, res) {
-  // Set CORS headers
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-Session-Token');
   
-  // Handle preflight
+  // Handle OPTIONS
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
-
-  // Only accept POST
+  
+  // Only POST allowed
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  // Check auth header
+  
+  // Check auth token
   if (!req.headers['x-session-token']) {
-    return res.status(401).json({ 
-      error: 'Unauthorized',
-      message: 'Session token required'
-    });
+    return res.status(401).json({ error: 'Unauthorized' });
   }
-
+  
   try {
-    // Import Supabase
-    const { createClient } = await import('@supabase/supabase-js');
+    const { zpid, vote, propertyData } = req.body;
     
-    // Check env vars
+    // Basic validation
+    if (!zpid || typeof vote !== 'boolean') {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+    
+    // Check if Supabase is configured
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+      // Demo mode - just return success
       return res.status(200).json({
         success: true,
-        message: 'Swipe saved (demo mode - no database)',
+        message: 'Swipe saved (demo mode)',
         warning: 'Database not configured'
       });
     }
     
-    // Create client
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_ANON_KEY
-    );
-    
-    // Get data from request
-    const { zpid, vote, propertyData } = req.body;
-    
-    // Validate
-    if (!zpid || typeof vote !== 'boolean' || !propertyData) {
-      return res.status(400).json({ error: 'Invalid request data' });
-    }
-    
-    // Save property
+    // Save property to database
     const { data: property, error: propError } = await supabase
       .from('properties')
       .upsert({
         zpid: zpid,
-        address: propertyData.address || '',
-        city: propertyData.city || '',
-        price: parseInt(propertyData.price) || 0,
-        beds: parseInt(propertyData.beds) || 0,
-        baths: parseFloat(propertyData.baths) || 0,
-        sqft: parseInt(propertyData.sqft) || 0,
-        image_url: propertyData.image || null,
-        match_score: parseFloat(propertyData.match) || 0,
-        raw_data: propertyData,
+        address: propertyData?.address || '',
+        city: propertyData?.city || '',
+        price: parseInt(propertyData?.price) || 0,
+        beds: parseInt(propertyData?.beds) || 0,
+        baths: parseFloat(propertyData?.baths) || 0,
+        sqft: parseInt(propertyData?.sqft) || 0,
+        image_url: propertyData?.image || null,
+        match_score: parseFloat(propertyData?.match) || 0,
+        raw_data: propertyData || {},
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'zpid'
@@ -72,40 +68,38 @@ export default async function handler(req, res) {
       .single();
     
     if (propError) {
-      console.error('Property error:', propError);
-      return res.status(500).json({ 
-        error: 'Database error',
-        message: propError.message 
-      });
+      console.error('Property save error:', propError);
+      throw propError;
     }
     
     // Save swipe
-    const { error: swipeError } = await supabase
+    await supabase
       .from('swipes')
       .insert({
         property_id: property.id,
         user_email: 'default@homematch.com',
         vote: vote,
         swiped_at: new Date().toISOString()
+      })
+      .catch(err => {
+        // Ignore duplicate swipe errors
+        if (err.code !== '23505') {
+          console.error('Swipe error:', err);
+        }
       });
     
-    // Ignore duplicate errors
-    if (swipeError && swipeError.code !== '23505') {
-      console.error('Swipe error:', swipeError);
-    }
-    
-    // Success
+    // Return success
     res.status(200).json({
       success: true,
-      message: 'Swipe saved',
+      message: 'Swipe saved successfully',
       propertyId: property.id
     });
     
   } catch (error) {
-    console.error('Handler error:', error);
-    res.status(500).json({ 
+    console.error('API error:', error);
+    res.status(500).json({
       error: 'Server error',
-      message: error.message 
+      message: error.message || 'Unknown error occurred'
     });
   }
 }
