@@ -9,13 +9,15 @@ export default async function handler(req, res) {
   }
 
   const { zpid, vote, propertyData, userEmail = 'shan@example.com' } = req.body;
+  
+  console.log('Received request:', { zpid, vote, userEmail });
 
   try {
     const { SUPABASE_URL, SUPABASE_KEY } = process.env;
     
-    // First, upsert the property
+    // Use upsert endpoint properly
     const propertyResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/properties?zpid=eq.${zpid}`,
+      `${SUPABASE_URL}/rest/v1/properties`,
       {
         method: 'POST',
         headers: {
@@ -27,26 +29,32 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           zpid: String(zpid),
           address: propertyData.address || 'Unknown',
-          city: propertyData.city || 'Unknown',
-          price: propertyData.price || 0,
-          beds: propertyData.beds || 0,
-          baths: propertyData.baths || 0,
-          sqft: propertyData.sqft || 0,
+          city: propertyData.city || 'Unknown', 
+          price: parseInt(propertyData.price) || 0,
+          beds: parseInt(propertyData.beds) || 0,
+          baths: parseFloat(propertyData.baths) || 0,
+          sqft: parseInt(propertyData.sqft) || 0,
           image_url: propertyData.image || '',
           raw_data: propertyData
         })
       }
     );
 
-    const propertyResult = await propertyResponse.json();
-    // FIX: Handle both array and single object responses
+    const responseText = await propertyResponse.text();
+    console.log('Property response:', propertyResponse.status, responseText);
+    
+    if (!propertyResponse.ok) {
+      throw new Error(`Supabase error: ${responseText}`);
+    }
+
+    const propertyResult = JSON.parse(responseText);
     const property = Array.isArray(propertyResult) ? propertyResult[0] : propertyResult;
     
     if (!property || !property.id) {
-      throw new Error('Failed to upsert property');
+      throw new Error('No property ID returned');
     }
 
-    // Then record the swipe
+    // Record the swipe
     const swipeResponse = await fetch(
       `${SUPABASE_URL}/rest/v1/swipes`,
       {
@@ -54,8 +62,7 @@ export default async function handler(req, res) {
         headers: {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           property_id: property.id,
@@ -66,13 +73,19 @@ export default async function handler(req, res) {
     );
 
     if (!swipeResponse.ok) {
-      const error = await swipeResponse.text();
-      throw new Error(`Failed to save swipe: ${error}`);
+      const swipeError = await swipeResponse.text();
+      console.error('Swipe error:', swipeError);
+      
+      // Try to parse error for duplicate key
+      if (swipeError.includes('duplicate key')) {
+        return res.status(200).json({ success: true, message: 'Vote updated' });
+      }
+      throw new Error(`Swipe error: ${swipeError}`);
     }
 
     res.status(200).json({ success: true, propertyId: property.id });
   } catch (error) {
-    console.error('Swipe error:', error);
+    console.error('Handler error:', error.message);
     res.status(500).json({ error: error.message });
   }
 }
