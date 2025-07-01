@@ -19,3 +19,9 @@ AI-powered Bay Area home search app with personalized scoring based on your uniq
 ## Version History
 - v0.1: Local prototype with real Zillow data ✅
 - v0.2: Cloud deployment with full features (in progress)
+
+# HomeMatch Documentation
+
+## Project Documents
+- [Product Requirements Document (PRD)](https://docs.google.com/document/d/1UHK6Q4SP2MeqBpACzfpLnVErhHiZkDBuCgtMG8zJiuI/edit)
+- [House Purchase Preferences](https://docs.google.com/document/d/1YL3FqnIAwqyw4X290J2A7hSNhI3mJQy1-D-CH4WzzsE/edit?tab=t.0)
