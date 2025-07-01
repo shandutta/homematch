@@ -1,74 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>HomeMatch · Search Preferences</title>
-  <link rel="stylesheet" href="css/styles.css" />
+    <meta charset="UTF-8">
+    <title>Redirecting...</title>
+    <meta http-equiv="refresh" content="0; url=index.html">
 </head>
-<body class="settings-page">
-  <header>
-    <a class="back-link" href="index.html">← Home Feed</a>
-    <h1>Search Preferences</h1>
-  </header>
-
-  <main id="settingsForm">
-    <!-- === PRICE RANGE =================================================== -->
-    <section>
-      <h2>Price Range</h2>
-      <label>Min Price: $ <input type="number" id="minPrice" /></label>
-      <label>Max Price: $ <input type="number" id="maxPrice" /></label>
-    </section>
-
-    <!-- === SQUARE FOOTAGE ================================================ -->
-    <section>
-      <h2>Square Footage</h2>
-      <label>Min <input type="number" id="minSqft" /> sq ft</label>
-      <label>Max <input type="number" id="maxSqft" /> sq ft</label>
-    </section>
-
-    <!-- === REQUIREMENTS ================================================== -->
-    <section>
-      <h2>Requirements</h2>
-      <label>Bedrooms <input type="number" id="minBeds" /></label>
-      <label>Bathrooms <input type="number" id="minBaths" /></label>
-      <label>Lawn ≥ <input type="number" id="minLawn" /> sq ft</label>
-      <label>Kitchen Age ≤ <input type="number" id="kitchenAge" /> years</label>
-    </section>
-
-    <!-- === NEIGHBOURHOODS ================================================ -->
-    <section>
-      <h2>Neighborhoods</h2>
-      <div id="neighborhoodGrid" class="grid"></div>
-    </section>
-
-    <!-- === IMPORTANCE WEIGHTS ============================================ -->
-    <section>
-      <h2>Importance Weights (<span id="totalPct">100</span>%)</h2>
-      <div class="weight">
-        <label>Lawn Size (<span id="lawnPct">30</span>%)</label>
-        <input type="range" min="0" max="100" id="lawnSlider" />
-      </div>
-      <div class="weight">
-        <label>Kitchen (<span id="kitchenPct">25</span>%)</label>
-        <input type="range" min="0" max="100" id="kitchenSlider" />
-      </div>
-      <div class="weight">
-        <label>Commute (<span id="commutePct">20</span>%)</label>
-        <input type="range" min="0" max="100" id="commuteSlider" />
-      </div>
-      <div class="weight">
-        <label>Safety (<span id="safetyPct">15</span>%)</label>
-        <input type="range" min="0" max="100" id="safetySlider" />
-      </div>
-      <div class="weight">
-        <label>View (<span id="viewPct">10</span>%)</label>
-        <input type="range" min="0" max="100" id="viewSlider" />
-      </div>
-    </section>
-
-    <button id="saveBtn">Save Preferences</button>
-  </main>
-
-  <script type="module" src="js/settings.js"></script>
+<body>
+    <p>Settings have moved. Redirecting to main app...</p>
+    <script>
+        // Immediate redirect
+        window.location.href = 'index.html';
+    </script>
 </body>
 </html>
