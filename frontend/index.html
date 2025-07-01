@@ -421,71 +421,265 @@
         }
 
         // Fetch properties from Zillow API
-        async function fetchProperties() {
+        // Replace your entire fetchProperties function and add these new functions in index.html
+
+// Calculate match score based on user preferences
+function calculateMatchScore(property, settings) {
+    const weights = settings.weights || {
+        lawn: 30,
+        kitchen: 25,
+        commute: 20,
+        safety: 15,
+        view: 10
+    };
+    
+    let score = 0;
+    
+    // Price score (100 if in range, decreases if over)
+    if (property.price <= settings.priceMax) {
+        score += 100;
+    } else {
+        const overBudgetPct = ((property.price - settings.priceMax) / settings.priceMax) * 100;
+        score += Math.max(0, 100 - overBudgetPct * 2);
+    }
+    
+    // Size score (based on sqft)
+    if (property.sqft >= settings.sqftMin && property.sqft <= settings.sqftMax) {
+        score += 20;
+    }
+    
+    // Freshness score (newer listings get bonus)
+    if (property.daysOnMarket !== undefined) {
+        if (property.daysOnMarket < 7) score += 15;
+        else if (property.daysOnMarket < 14) score += 10;
+        else if (property.daysOnMarket < 30) score += 5;
+    }
+    
+    // Neighborhood preference score
+    const favNeighborhoods = [
+        'Willow Glen, San Jose, CA',
+        'Los Gatos, CA',
+        'Palo Alto, CA',
+        'Menlo Park, CA',
+        'Cole Valley, San Francisco, CA',
+        'Noe Valley, San Francisco, CA'
+    ];
+    
+    if (property.neighborhood && favNeighborhoods.includes(property.neighborhood)) {
+        score += 10;
+    }
+    
+    // Normalize to 0-100
+    return Math.min(100, Math.round(score / 1.5));
+}
+
+// Fetch properties from multiple neighborhoods
+async function fetchProperties() {
+    try {
+        console.log('Fetching properties from multiple neighborhoods...');
+        showLoading();
+        
+        // Get all selected neighborhoods
+        const neighborhoods = userSettings.neighborhoods || ['Palo Alto, CA'];
+        console.log(`Searching in ${neighborhoods.length} neighborhoods:`, neighborhoods);
+        
+        let allProperties = [];
+        let totalPages = 0;
+        
+        // Fetch from each neighborhood
+        for (let i = 0; i < neighborhoods.length; i++) {
+            const location = neighborhoods[i];
+            
             try {
-                console.log('Fetching properties...');
+                // Show progress
+                const loadingDiv = document.getElementById('loadingState');
+                if (loadingDiv) {
+                    loadingDiv.innerHTML = `
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 1rem;">Searching ${location}... (${i + 1}/${neighborhoods.length})</p>
+                    `;
+                }
                 
-                // Use the first neighborhood or default
-                const location = userSettings.neighborhoods[0] || 'Palo Alto, CA';
+                console.log(`Fetching from ${location}...`);
                 
                 const response = await fetch(
-                    `/api/zillow-search?location=${encodeURIComponent(location)}&priceMin=${userSettings.priceMin}&priceMax=${userSettings.priceMax}`
+                    `/api/zillow-search?location=${encodeURIComponent(location)}&priceMin=${userSettings.priceMin}&priceMax=${userSettings.priceMax}&page=1`
                 );
                 
                 if (!response.ok) {
-                    throw new Error(`API error: ${response.status}`);
+                    console.error(`Failed to fetch from ${location}:`, response.status);
+                    continue;
                 }
                 
                 const data = await response.json();
-                
-                // Debug logging
-                console.log('API Response:', {
-                    totalResults: data.totalResultCount,
+                console.log(`API Response from ${location}:`, {
                     resultsReturned: data.results?.length || 0,
-                    currentPage: data.pagination?.currentPage,
-                    totalPages: data.pagination?.totalPages,
-                    hasMore: data.pagination?.hasMore,
-                    rawData: data
+                    totalAvailable: data.totalResultCount || 0
                 });
                 
                 if (data.results && data.results.length > 0) {
-                    console.log(`Found ${data.results.length} properties`);
-                    
-                    // Check pagination info
-                    if (data.pagination) {
-                        hasMorePages = data.pagination.hasMore;
-                        console.log(`Page ${data.pagination.currentPage} of ${data.pagination.totalPages}`);
-                    }
-                    
-                    // Transform Zillow data to our format
-                    properties = data.results.map(prop => ({
+                    // Transform and add neighborhood info
+                    const neighborhoodProperties = data.results.map(prop => ({
                         id: prop.zpid,
                         price: prop.price || 0,
                         address: prop.streetAddress || prop.address || 'No address',
-                        city: prop.city || 'Bay Area',
+                        city: prop.city || location.split(',')[0],
+                        neighborhood: location,
                         image: prop.imgSrc || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
                         beds: prop.bedrooms || 3,
                         baths: prop.bathrooms || 2,
                         sqft: prop.livingArea || 2000,
-                        match: Math.floor(Math.random() * 15) + 80
+                        daysOnMarket: prop.daysOnZillow || 0,
+                        match: 0 // Will be calculated
                     }));
                     
-                    // If we only got 1 property, warn the user
-                    if (properties.length === 1) {
-                        console.warn('Only 1 property returned! This might be due to:');
-                        console.warn('- Narrow search criteria');
-                        console.warn('- Limited inventory in selected area');
-                        console.warn('- API rate limiting');
-                        showError('Only found 1 property. Try expanding your search criteria in Settings.');
+                    allProperties = [...allProperties, ...neighborhoodProperties];
+                    
+                    // Track if this neighborhood has more pages
+                    if (data.pagination && data.pagination.totalPages > 1) {
+                        totalPages += data.pagination.totalPages - 1; // Subtract 1 since we got page 1
                     }
-                } else {
-                    throw new Error('No properties found');
                 }
+                
+                // Small delay to avoid rate limiting
+                if (i < neighborhoods.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
             } catch (error) {
-                console.error('Fetch error:', error);
-                throw error;
+                console.error(`Error fetching from ${location}:`, error);
             }
         }
+        
+        // Remove duplicates
+        const uniqueProperties = allProperties.filter((prop, index, self) =>
+            index === self.findIndex((p) => p.id === prop.id)
+        );
+        
+        // Calculate match scores
+        uniqueProperties.forEach(prop => {
+            prop.match = calculateMatchScore(prop, userSettings);
+        });
+        
+        // Sort by match score (highest first) with some randomization for variety
+        properties = uniqueProperties.sort((a, b) => {
+            // Group by score buckets (90-100, 80-89, etc.)
+            const aBucket = Math.floor(a.match / 10);
+            const bBucket = Math.floor(b.match / 10);
+            
+            if (aBucket !== bBucket) {
+                return bBucket - aBucket; // Higher bucket first
+            }
+            
+            // Within same bucket, add some randomness
+            return Math.random() - 0.5;
+        });
+        
+        console.log(`Total unique properties found: ${properties.length}`);
+        console.log('Score distribution:', properties.reduce((acc, p) => {
+            const bucket = `${Math.floor(p.match / 10) * 10}-${Math.floor(p.match / 10) * 10 + 9}`;
+            acc[bucket] = (acc[bucket] || 0) + 1;
+            return acc;
+        }, {}));
+        
+        // Set pagination status based on total pages from all neighborhoods
+        hasMorePages = totalPages > 0;
+        currentPage = 1;
+        
+        if (properties.length === 0) {
+            throw new Error('No properties found in any neighborhood');
+        }
+        
+    } catch (error) {
+        console.error('Fetch error:', error);
+        throw error;
+    }
+}
+
+// Load more properties from subsequent pages
+async function loadMore() {
+    if (isLoading || !hasMorePages) return;
+    
+    isLoading = true;
+    document.getElementById('loadMoreBtn').textContent = 'Loading more neighborhoods...';
+    document.getElementById('loadMoreBtn').disabled = true;
+    
+    try {
+        currentPage++;
+        const neighborhoods = userSettings.neighborhoods || ['Palo Alto, CA'];
+        let newProperties = [];
+        
+        // Try to get page 2+ from each neighborhood
+        for (const location of neighborhoods) {
+            try {
+                const response = await fetch(
+                    `/api/zillow-search?location=${encodeURIComponent(location)}&priceMin=${userSettings.priceMin}&priceMax=${userSettings.priceMax}&page=${currentPage}`
+                );
+                
+                if (!response.ok) continue;
+                
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    const moreProps = data.results.map(prop => ({
+                        id: prop.zpid,
+                        price: prop.price || 0,
+                        address: prop.streetAddress || prop.address || 'No address',
+                        city: prop.city || location.split(',')[0],
+                        neighborhood: location,
+                        image: prop.imgSrc || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
+                        beds: prop.bedrooms || 3,
+                        baths: prop.bathrooms || 2,
+                        sqft: prop.livingArea || 2000,
+                        daysOnMarket: prop.daysOnZillow || 0,
+                        match: 0
+                    }));
+                    
+                    // Calculate scores
+                    moreProps.forEach(prop => {
+                        prop.match = calculateMatchScore(prop, userSettings);
+                    });
+                    
+                    newProperties = [...newProperties, ...moreProps];
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (error) {
+                console.error(`Error loading more from ${location}:`, error);
+            }
+        }
+        
+        if (newProperties.length > 0) {
+            // Remove duplicates
+            const existingIds = new Set(properties.map(p => p.id));
+            const uniqueNew = newProperties.filter(p => !existingIds.has(p.id));
+            
+            // Sort new properties by score
+            uniqueNew.sort((a, b) => b.match - a.match);
+            
+            // Append to properties
+            properties = [...properties, ...uniqueNew];
+            updateStats();
+            
+            console.log(`Loaded ${uniqueNew.length} more unique properties`);
+            
+            // Hide error, show card, hide button
+            document.getElementById('errorDisplay').style.display = 'none';
+            document.getElementById('loadMoreBtn').style.display = 'none';
+            displayProperty(currentIndex);
+        } else {
+            hasMorePages = false;
+            showError('No more properties found in any neighborhood.');
+        }
+    } catch (error) {
+        console.error('Error loading more:', error);
+        showError('Failed to load more properties. Try again later.');
+        currentPage--;
+    } finally {
+        isLoading = false;
+        document.getElementById('loadMoreBtn').textContent = 'Load More Properties';
+        document.getElementById('loadMoreBtn').disabled = false;
+    }
         
         // Display property
         function displayProperty(index) {

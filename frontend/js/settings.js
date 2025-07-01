@@ -1,48 +1,49 @@
 // HomeMatch Settings JS
-const ALL_NEIGHBORHOODS = [
-    'Willow Glen, San Jose, CA',
-    'Los Gatos, CA',
-    'Cupertino, CA',
-    'Palo Alto, CA',
-    'Menlo Park, CA',
-    'Mountain View, CA',
-    'San Mateo, CA',
-    'San Carlos, CA',
-    'Belmont, CA',
-    'Lafayette, CA',
-    'Orinda, CA',
-    'Moraga, CA',
-    'Walnut Creek, CA',
-    'Cole Valley, San Francisco, CA',
-    'Almaden, San Jose, CA',
-    'Cambrian, San Jose, CA',
-    'Piedmont, CA',
-    'Oakland Hills, CA',
-    'Berkeley Hills, CA',
-    'Noe Valley, San Francisco, CA',
-    'Richmond District, San Francisco, CA',
-    'Sunset District, San Francisco, CA'
-];
+const NEIGHBORHOODS = {
+     favorites: [
+        'Willow Glen, San Jose, CA',
+        'Los Gatos, CA',
+        'Cupertino, CA',
+        'Palo Alto, CA',
+        'Menlo Park, CA',
+        'Mountain View, CA',
+        'San Mateo, CA',
+        'San Carlos, CA',
+        'Belmont, CA',
+        'Lafayette, CA',
+        'Orinda, CA',
+        'Moraga, CA',
+        'Walnut Creek, CA',
+        'Cole Valley, San Francisco, CA'
+     ],
+     all: [
+        'Willow Glen, San Jose, CA',
+        'Los Gatos, CA',
+        'Cupertino, CA',
+        'Palo Alto, CA',
+        'Menlo Park, CA',
+        'Mountain View, CA',
+        'San Mateo, CA',
+        'San Carlos, CA',
+        'Belmont, CA',
+        'Lafayette, CA',
+        'Orinda, CA',
+        'Moraga, CA',
+        'Walnut Creek, CA',
+        'Cole Valley, San Francisco, CA',
+        'Almaden, San Jose, CA',
+        'Cambrian, San Jose, CA',
+        'Piedmont, CA',
+        'Oakland Hills, CA',
+        'Berkeley Hills, CA',
+        'Noe Valley, San Francisco, CA',
+        'Richmond District, San Francisco, CA',
+        'Sunset District, San Francisco, CA'
+     ]
+};
 
-const FAV_NEIGHBORHOODS = [
-    'Willow Glen, San Jose, CA',
-    'Los Gatos, CA',
-    'Cupertino, CA',
-    'Palo Alto, CA',
-    'Menlo Park, CA',
-    'Mountain View, CA',
-    'San Mateo, CA',
-    'San Carlos, CA',
-    'Belmont, CA',
-    'Lafayette, CA',
-    'Orinda, CA',
-    'Moraga, CA',
-    'Walnut Creek, CA',
-    'Cole Valley, San Francisco, CA'
-];
-
-// Load saved settings or use defaults
-let settings = {
+// Default settings
+const DEFAULT_SETTINGS = {
     priceMin: 1800000,
     priceMax: 2300000,
     sqftMin: 1800,
@@ -51,7 +52,14 @@ let settings = {
     bathsMin: 2,
     lawnMin: 200,
     kitchenAge: 10,
-    neighborhoods: [...FAV_NEIGHBORHOODS],
+    neighborhoods: [
+        'Palo Alto, CA',
+        'Menlo Park, CA',
+        'Mountain View, CA',
+        'Los Gatos, CA',
+        'Cupertino, CA',
+        'San Mateo, CA'
+    ], // Default to multiple neighborhoods
     weights: {
         lawn: 30,
         kitchen: 25,
@@ -61,106 +69,81 @@ let settings = {
     }
 };
 
-// Load from localStorage
+// Load settings
+let settings = { ...DEFAULT_SETTINGS };
 const saved = localStorage.getItem('homematchSettings');
 if (saved) {
-    settings = JSON.parse(saved);
+    settings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
 }
 
-// Populate form fields
-document.getElementById('minPrice').value = settings.priceMin;
-document.getElementById('maxPrice').value = settings.priceMax;
-document.getElementById('minSqft').value = settings.sqftMin;
-document.getElementById('maxSqft').value = settings.sqftMax;
-document.getElementById('minBeds').value = settings.bedsMin;
-document.getElementById('minBaths').value = settings.bathsMin;
-document.getElementById('minLawn').value = settings.lawnMin;
-document.getElementById('kitchenAge').value = settings.kitchenAge;
+// Populate form on load
+document.addEventListener('DOMContentLoaded', () => {
+    // Fill in form values
+    Object.entries({
+        minPrice: settings.priceMin,
+        maxPrice: settings.priceMax,
+        minSqft: settings.sqftMin,
+        maxSqft: settings.sqftMax,
+        minBeds: settings.bedsMin,
+        minBaths: settings.bathsMin,
+        minLawn: settings.lawnMin,
+        kitchenAge: settings.kitchenAge
+    }).forEach(([id, value]) => {
+        document.getElementById(id).value = value;
+    });
 
-// Create neighborhood checkboxes
-const neighborhoodGrid = document.getElementById('neighborhoodGrid');
-ALL_NEIGHBORHOODS.forEach(n => {
-    const label = document.createElement('label');
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.value = n;
-    checkbox.checked = settings.neighborhoods.includes(n);
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(' ' + n));
-    neighborhoodGrid.appendChild(label);
-});
+    // Create neighborhood checkboxes
+    const grid = document.getElementById('neighborhoodGrid');
+    NEIGHBORHOODS.all.forEach(n => {
+        const label = document.createElement('label');
+        label.innerHTML = `
+            <input type="checkbox" value="${n}" 
+                   ${settings.neighborhoods.includes(n) ? 'checked' : ''}>
+            ${n}
+        `;
+        grid.appendChild(label);
+    });
 
-// Setup weight sliders
-const weights = { ...settings.weights };
-
-function renderWeights() {
-    const total = Object.values(weights).reduce((a, b) => a + b, 0);
-    document.getElementById('totalPct').textContent = total;
+    // Setup weights
+    const weights = { ...settings.weights };
     
-    for (const k in weights) {
-        document.getElementById(`${k}Pct`).textContent = weights[k];
-        document.getElementById(`${k}Slider`).value = weights[k];
-    }
-}
-
-function rebalance(changedKey, newVal) {
-    newVal = parseInt(newVal);
-    const delta = newVal - weights[changedKey];
-    weights[changedKey] = newVal;
-
-    const others = Object.keys(weights).filter(k => k !== changedKey);
-    let pool = others.reduce((s, k) => s + weights[k], 0);
-
-    if (pool > 0) {
-        others.forEach(k => {
-            const share = weights[k] / pool;
-            weights[k] = Math.max(0, Math.round(weights[k] - delta * share));
+    function updateWeights() {
+        const total = Object.values(weights).reduce((a, b) => a + b, 0);
+        document.getElementById('totalPct').textContent = total;
+        Object.entries(weights).forEach(([k, v]) => {
+            document.getElementById(`${k}Pct`).textContent = v;
+            document.getElementById(`${k}Slider`).value = v;
         });
     }
 
-    // Adjust to make total = 100
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
-    if (sum !== 100 && others.length > 0) {
-        weights[others[0]] += 100 - sum;
-    }
-    
-    renderWeights();
-}
+    // Handle weight changes
+    Object.keys(weights).forEach(key => {
+        document.getElementById(`${key}Slider`).addEventListener('input', (e) => {
+            weights[key] = parseInt(e.target.value);
+            updateWeights();
+        });
+    });
 
-// Wire up sliders
-['lawn', 'kitchen', 'commute', 'safety', 'view'].forEach(k => {
-    document.getElementById(`${k}Slider`).addEventListener('input', e => {
-        rebalance(k, e.target.value);
+    updateWeights();
+
+    // Save button
+    document.getElementById('saveBtn').addEventListener('click', () => {
+        // Collect all values
+        const newSettings = {
+            priceMin: parseInt(document.getElementById('minPrice').value),
+            priceMax: parseInt(document.getElementById('maxPrice').value),
+            sqftMin: parseInt(document.getElementById('minSqft').value),
+            sqftMax: parseInt(document.getElementById('maxSqft').value),
+            bedsMin: parseInt(document.getElementById('minBeds').value),
+            bathsMin: parseInt(document.getElementById('minBaths').value),
+            lawnMin: parseInt(document.getElementById('minLawn').value),
+            kitchenAge: parseInt(document.getElementById('kitchenAge').value),
+            neighborhoods: [...grid.querySelectorAll('input:checked')].map(cb => cb.value),
+            weights: { ...weights }
+        };
+
+        localStorage.setItem('homematchSettings', JSON.stringify(newSettings));
+        alert('Settings saved!');
+        window.location.href = 'index.html';
     });
 });
-
-// Save button
-document.getElementById('saveBtn').addEventListener('click', () => {
-    // Gather form values
-    settings.priceMin = parseInt(document.getElementById('minPrice').value) || 1800000;
-    settings.priceMax = parseInt(document.getElementById('maxPrice').value) || 2300000;
-    settings.sqftMin = parseInt(document.getElementById('minSqft').value) || 1800;
-    settings.sqftMax = parseInt(document.getElementById('maxSqft').value) || 3000;
-    settings.bedsMin = parseInt(document.getElementById('minBeds').value) || 3;
-    settings.bathsMin = parseInt(document.getElementById('minBaths').value) || 2;
-    settings.lawnMin = parseInt(document.getElementById('minLawn').value) || 200;
-    settings.kitchenAge = parseInt(document.getElementById('kitchenAge').value) || 10;
-    
-    // Get selected neighborhoods
-    settings.neighborhoods = [];
-    neighborhoodGrid.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-        settings.neighborhoods.push(cb.value);
-    });
-    
-    // Save weights
-    settings.weights = { ...weights };
-    
-    // Save to localStorage
-    localStorage.setItem('homematchSettings', JSON.stringify(settings));
-    
-    alert('Settings saved!');
-    window.location.href = 'index.html';
-});
-
-// Initialize weights display
-renderWeights();
