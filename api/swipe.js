@@ -11,12 +11,11 @@ export default async function handler(req, res) {
   const { zpid, vote, propertyData, userEmail = 'shan@example.com' } = req.body;
 
   try {
-    // Use fetch to call Supabase REST API directly
     const { SUPABASE_URL, SUPABASE_KEY } = process.env;
     
     // First, upsert the property
     const propertyResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/properties`,
+      `${SUPABASE_URL}/rest/v1/properties?zpid=eq.${zpid}`,
       {
         method: 'POST',
         headers: {
@@ -27,20 +26,26 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           zpid: String(zpid),
-          address: propertyData.address,
-          city: propertyData.city,
-          price: propertyData.price,
-          beds: propertyData.beds,
-          baths: propertyData.baths,
-          sqft: propertyData.sqft,
-          image_url: propertyData.image,
+          address: propertyData.address || 'Unknown',
+          city: propertyData.city || 'Unknown',
+          price: propertyData.price || 0,
+          beds: propertyData.beds || 0,
+          baths: propertyData.baths || 0,
+          sqft: propertyData.sqft || 0,
+          image_url: propertyData.image || '',
           raw_data: propertyData
         })
       }
     );
 
-    const [property] = await propertyResponse.json();
+    const propertyResult = await propertyResponse.json();
+    // FIX: Handle both array and single object responses
+    const property = Array.isArray(propertyResult) ? propertyResult[0] : propertyResult;
     
+    if (!property || !property.id) {
+      throw new Error('Failed to upsert property');
+    }
+
     // Then record the swipe
     const swipeResponse = await fetch(
       `${SUPABASE_URL}/rest/v1/swipes`,
@@ -49,7 +54,8 @@ export default async function handler(req, res) {
         headers: {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
         },
         body: JSON.stringify({
           property_id: property.id,
@@ -60,10 +66,11 @@ export default async function handler(req, res) {
     );
 
     if (!swipeResponse.ok) {
-      throw new Error('Failed to save swipe');
+      const error = await swipeResponse.text();
+      throw new Error(`Failed to save swipe: ${error}`);
     }
 
-    res.status(200).json({ success: true });
+    res.status(200).json({ success: true, propertyId: property.id });
   } catch (error) {
     console.error('Swipe error:', error);
     res.status(500).json({ error: error.message });
