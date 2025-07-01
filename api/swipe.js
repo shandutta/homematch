@@ -17,14 +17,14 @@ export default async function handler(req, res) {
     
     // Use upsert endpoint properly
     const propertyResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/properties`,
-      {
+    `${SUPABASE_URL}/rest/v1/properties?on_conflict=zpid`,
+    {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates,return=representation'
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=representation'
         },
         body: JSON.stringify({
           zpid: String(zpid),

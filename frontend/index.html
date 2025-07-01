@@ -503,50 +503,44 @@
 
         // Handle swipe actions
 
-        // Add this NEW function around line 410 (before handleReject)
         async function saveSwipe(property, vote) {
+        console.log('saveSwipe called with:', { property, vote }); // ADD THIS
         try {
-            await fetch('/api/swipe', {
+            const response = await fetch('/api/swipe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 zpid: property.id,
                 vote,
                 propertyData: property,
-                userEmail: 'shan@example.com' // TODO: Get from auth
+                userEmail: 'shan@example.com'
             })
             });
+            const result = await response.json();
+            console.log('Swipe saved:', result);
         } catch (error) {
             console.error('Failed to save swipe:', error);
         }
         }
 
-        // UPDATE your existing handleReject (line ~415)
+        // Then update your handlers to verify they're calling it:
         function handleReject() {
-        const property = properties[currentIndex];  // ADD this line
-        saveSwipe(property, false);                 // ADD this line
+        console.log('handleReject called'); // ADD THIS
+        const property = properties[currentIndex];
+        console.log('Current property:', property); // ADD THIS
+        saveSwipe(property, false);
         console.log('Property rejected');
         nextProperty();
         }
 
-        // UPDATE your existing handleLike (line ~420)
         function handleLike() {
-        const property = properties[currentIndex];  // ADD this line
-        saveSwipe(property, true);                  // ADD this line
+        console.log('handleLike called'); // ADD THIS
+        const property = properties[currentIndex];
+        console.log('Current property:', property); // ADD THIS
+        saveSwipe(property, true);
         console.log('Property liked');
         stats.liked++;
         nextProperty();
-        }
-
-        function handleReject() {
-            console.log('Property rejected');
-            nextProperty();
-        }
-
-        function handleLike() {
-            console.log('Property liked');
-            stats.liked++;
-            nextProperty();
         }
 
         function nextProperty() {
