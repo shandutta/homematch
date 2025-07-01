@@ -418,8 +418,8 @@
 
     <script type = "module">
         // Settings object
-        import { ALL_NEIGHBORHOODS, FAV_NEIGHBORHOODS } from './api/neighborhoods.js';
-
+        const { all: ALL_NEIGHBORHOODS, fav: FAV_NEIGHBORHOODS } = await fetch('/api/neighborhoods').then(r => r.json());
+        
         let userSettings = {
             priceMin: 1800000,
             priceMax: 2300000,

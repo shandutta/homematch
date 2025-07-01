@@ -1,6 +1,6 @@
+// api/neighborhoods.js
 export default function handler(req, res) {
-
-    const FAV_NEIGHBORHOODS = [
+  const FAV_NEIGHBORHOODS = [
     'Willow Glen, San Jose, CA',
     'Los Gatos, CA',
     'Cupertino, CA',
@@ -15,9 +15,9 @@ export default function handler(req, res) {
     'Moraga, CA',
     'Walnut Creek, CA',
     'Cole Valley, San Francisco, CA'
-    ]
+  ]
 
-    const ALL_NEIGHBORHOODS = [
+  const ALL_NEIGHBORHOODS = [
     ...FAV_NEIGHBORHOODS,
     'Almaden, San Jose, CA',
     'Cambrian, San Jose, CA',
@@ -27,8 +27,20 @@ export default function handler(req, res) {
     'Noe Valley, San Francisco, CA',
     'Richmond District, San Francisco, CA',
     'Sunset District, San Francisco, CA'
-    ]
+  ]
 
-  res.setHeader('Access-Control-Allow-Origin', '*')     // for local HTML testing
-  res.status(200).json({ all: ALL, fav: FAV })
+  // --- CORS (allow your front-end to call this from same origin) ----------
+  res.setHeader('Access-Control-Allow-Origin', '*')   // tighten later
+  // If the browser sends a pre-flight OPTIONS request, answer it:
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS')
+    res.status(204).end()
+    return
+  }
+
+  // --- normal GET ---------------------------------------------------------
+  res.status(200).json({
+    all: ALL_NEIGHBORHOODS,
+    fav: FAV_NEIGHBORHOODS
+  })
 }

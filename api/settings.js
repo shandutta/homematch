@@ -1,4 +1,4 @@
-import { ALL_NEIGHBORHOODS, FAV_NEIGHBORHOODS } from './neighborhoods.js'
+const { all: ALL_NEIGHBORHOODS, fav: FAV_NEIGHBORHOODS } = await fetch('/api/neighborhoods').then(r => r.json());
 
 /* ---------- weights ---------------------------------------------------- */
 const WEIGHTS = { lawn: 30, kitchen: 25, commute: 20, safety: 15, view: 10 }
