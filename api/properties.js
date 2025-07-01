@@ -2,14 +2,11 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   
   try {
-    // Just try 3 neighborhoods first
-    const testNeighborhoods = [
-      'Palo Alto, CA',
-      'Menlo Park, CA',
-      'Los Gatos, CA'
-    ];
-    
-    console.log('Testing with neighborhoods:', testNeighborhoods);
+    // In api/properties.js, accept neighborhoods from query params
+    const { neighborhoods } = req.query;
+    const neighborhoodList = neighborhoods 
+        ? JSON.parse(neighborhoods) 
+        : ['Palo Alto, CA', 'Menlo Park, CA']; // default fallback
     
     // Fetch one at a time to see which fails
     const results = [];

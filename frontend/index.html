@@ -284,6 +284,110 @@
                 max-width: 90%;
             }
         }
+
+        /* Settings Styles */
+        .settings-section {
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .settings-section h3 {
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .range-inputs {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .range-inputs label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .range-inputs input {
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 0.25rem;
+            width: 150px;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .filter-grid label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-grid input {
+            width: 80px;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 0.25rem;
+        }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.75rem;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 1rem;
+            background: var(--background);
+            border-radius: 0.5rem;
+        }
+
+        .checkbox-grid label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .checkbox-grid input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .weights-container {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .weight-slider {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .weight-slider input[type="range"] {
+            width: 100%;
+        }
+
+        .save-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .save-btn:hover {
+            background: var(--primary-dark);
+        }
+
     </style>
 </head>
 <body>
@@ -349,18 +453,270 @@
         </div>
     </main>
 
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeSettings()">×</button>
-            <h2>Settings</h2>
-            <p>Price Range: $1,800,000 - $2,300,000</p>
-            <p>Square Footage: 1,800 - 3,000 sf</p>
-            <p>Locations: Willow Glen, Cambrian, Los Gatos, Menlo Park, San Mateo</p>
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content" style="max-width: 800px;">
+                <button class="close-btn" onclick="closeSettings()">×</button>
+                <h2 style="margin-bottom: 1.5rem;">Search Preferences</h2>
+                
+                <!-- Price Range -->
+                <div class="settings-section">
+                    <h3>Price Range</h3>
+                    <div class="range-inputs">
+                        <label>
+                            Min Price: $<input type="number" id="priceMin" value="1800000" step="100000">
+                        </label>
+                        <label>
+                            Max Price: $<input type="number" id="priceMax" value="2300000" step="100000">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Square Footage -->
+                <div class="settings-section">
+                    <h3>Square Footage</h3>
+                    <div class="range-inputs">
+                        <label>
+                            Min: <input type="number" id="sqftMin" value="1800" step="100"> sq ft
+                        </label>
+                        <label>
+                            Max: <input type="number" id="sqftMax" value="3000" step="100"> sq ft
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Other Filters -->
+                <div class="settings-section">
+                    <h3>Requirements</h3>
+                    <div class="filter-grid">
+                        <label>
+                            Min Bedrooms: <input type="number" id="bedsMin" value="3" min="1" max="10">
+                        </label>
+                        <label>
+                            Min Bathrooms: <input type="number" id="bathsMin" value="2" min="1" max="10" step="0.5">
+                        </label>
+                        <label>
+                            Min Lawn Size: <input type="number" id="lawnMin" value="200"> sq ft
+                        </label>
+                        <label>
+                            Kitchen Age: ≤ <input type="number" id="kitchenAge" value="10"> years
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Neighborhoods -->
+                <div class="settings-section">
+                    <h3>Neighborhoods</h3>
+                    <div id="neighborhoodGrid" class="checkbox-grid">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Scoring Weights -->
+                <div class="settings-section">
+                    <h3>Importance Weights</h3>
+                    <div class="weights-container">
+                        <div class="weight-slider">
+                            <label>Lawn Size: <span id="lawnWeight">30</span>%</label>
+                            <input type="range" id="weightLawn" min="0" max="100" value="30" 
+                                oninput="updateWeight('lawn', this.value)">
+                        </div>
+                        <div class="weight-slider">
+                            <label>Kitchen: <span id="kitchenWeight">25</span>%</label>
+                            <input type="range" id="weightKitchen" min="0" max="100" value="25" 
+                                oninput="updateWeight('kitchen', this.value)">
+                        </div>
+                        <div class="weight-slider">
+                            <label>Commute: <span id="commuteWeight">20</span>%</label>
+                            <input type="range" id="weightCommute" min="0" max="100" value="20" 
+                                oninput="updateWeight('commute', this.value)">
+                        </div>
+                        <div class="weight-slider">
+                            <label>Safety: <span id="safetyWeight">15</span>%</label>
+                            <input type="range" id="weightSafety" min="0" max="100" value="15" 
+                                oninput="updateWeight('safety', this.value)">
+                        </div>
+                        <div class="weight-slider">
+                            <label>View: <span id="viewWeight">10</span>%</label>
+                            <input type="range" id="weightView" min="0" max="100" value="10" 
+                                oninput="updateWeight('view', this.value)">
+                        </div>
+                        <div style="margin-top: 1rem; font-weight: bold;">
+                            Total: <span id="totalWeight">100</span>%
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button class="save-btn" onclick="saveSettings()">Save Preferences</button>
+                </div>
+            </div>
         </div>
-    </div>
 
     <script>
+        // Neighborhoods list
+        const ALL_NEIGHBORHOODS = [
+            'Willow Glen, San Jose, CA',
+            'Cambrian, San Jose, CA',
+            'Almaden, San Jose, CA',
+            'Los Gatos, CA',
+            'Cupertino, CA',
+            'Palo Alto, CA',
+            'Menlo Park, CA',
+            'Mountain View, CA',
+            'San Mateo, CA',
+            'San Carlos, CA',
+            'Belmont, CA',
+            'Walnut Creek, CA',
+            'Lafayette, CA',
+            'Piedmont, CA',
+            'Oakland Hills, CA',
+            'Berkeley Hills, CA',
+            'Noe Valley, San Francisco, CA',
+            'Cole Valley, San Francisco, CA',
+            'Richmond District, San Francisco, CA',
+            'Sunset District, San Francisco, CA'
+        ];
+
+        // Settings object
+        let userSettings = {
+            priceMin: 1800000,
+            priceMax: 2300000,
+            sqftMin: 1800,
+            sqftMax: 3000,
+            bedsMin: 3,
+            bathsMin: 2,
+            lawnMin: 200,
+            kitchenAge: 10,
+            neighborhoods: [
+                'Willow Glen, San Jose, CA',
+                'Cambrian, San Jose, CA',
+                'Los Gatos, CA',
+                'Cupertino, CA',
+                'Palo Alto, CA',
+                'Menlo Park, CA',
+                'Mountain View, CA',
+                'San Mateo, CA',
+                'San Carlos, CA',
+                'Belmont, CA'
+            ],
+            weights: {
+                lawn: 30,
+                kitchen: 25,
+                commute: 20,
+                safety: 15,
+                view: 10
+            }
+        };
+
+        // Load settings from localStorage
+        function loadSettings() {
+            const saved = localStorage.getItem('homematchSettings');
+            if (saved) {
+                userSettings = JSON.parse(saved);
+            }
+        }
+
+        // Save settings to localStorage
+        function saveSettings() {
+            // Get values from form
+            userSettings.priceMin = parseInt(document.getElementById('priceMin').value);
+            userSettings.priceMax = parseInt(document.getElementById('priceMax').value);
+            userSettings.sqftMin = parseInt(document.getElementById('sqftMin').value);
+            userSettings.sqftMax = parseInt(document.getElementById('sqftMax').value);
+            userSettings.bedsMin = parseInt(document.getElementById('bedsMin').value);
+            userSettings.bathsMin = parseFloat(document.getElementById('bathsMin').value);
+            userSettings.lawnMin = parseInt(document.getElementById('lawnMin').value);
+            userSettings.kitchenAge = parseInt(document.getElementById('kitchenAge').value);
+            
+            // Get selected neighborhoods
+            userSettings.neighborhoods = [];
+            document.querySelectorAll('#neighborhoodGrid input:checked').forEach(cb => {
+                userSettings.neighborhoods.push(cb.value);
+            });
+            
+            // Save to localStorage
+            localStorage.setItem('homematchSettings', JSON.stringify(userSettings));
+            
+            // Close modal and reload properties
+            closeSettings();
+            alert('Settings saved! Reloading properties...');
+            window.location.reload();
+        }
+
+        // Open settings modal
+        function openSettings() {
+            populateSettingsForm();
+            document.getElementById('settingsModal').classList.add('active');
+        }
+
+        // Close settings modal
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+
+        // Populate form with current settings
+        function populateSettingsForm() {
+            // Set form values
+            document.getElementById('priceMin').value = userSettings.priceMin;
+            document.getElementById('priceMax').value = userSettings.priceMax;
+            document.getElementById('sqftMin').value = userSettings.sqftMin;
+            document.getElementById('sqftMax').value = userSettings.sqftMax;
+            document.getElementById('bedsMin').value = userSettings.bedsMin;
+            document.getElementById('bathsMin').value = userSettings.bathsMin;
+            document.getElementById('lawnMin').value = userSettings.lawnMin;
+            document.getElementById('kitchenAge').value = userSettings.kitchenAge;
+            
+            // Populate neighborhoods
+            const grid = document.getElementById('neighborhoodGrid');
+            grid.innerHTML = ALL_NEIGHBORHOODS.map(n => `
+                <label>
+                    <input type="checkbox" value="${n}" 
+                        ${userSettings.neighborhoods.includes(n) ? 'checked' : ''}>
+                    ${n.split(',')[0]}
+                </label>
+            `).join('');
+            
+            // Set weight sliders
+            Object.entries(userSettings.weights).forEach(([key, value]) => {
+                const slider = document.getElementById(`weight${key.charAt(0).toUpperCase() + key.slice(1)}`);
+                const display = document.getElementById(`${key}Weight`);
+                if (slider) slider.value = value;
+                if (display) display.textContent = value;
+            });
+        }
+
+        // Update weight display
+        function updateWeight(type, value) {
+            document.getElementById(`${type}Weight`).textContent = value;
+            userSettings.weights[type] = parseInt(value);
+            
+            // Calculate total
+            const total = Object.values(userSettings.weights).reduce((sum, w) => sum + w, 0);
+            document.getElementById('totalWeight').textContent = total;
+        }
+
+        // Update nav to include settings link
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load settings on startup
+            loadSettings();
+            
+            // Add settings link to nav (if not already there)
+            const nav = document.querySelector('.nav');
+            if (nav && !nav.querySelector('[href="#settings"]')) {
+                const settingsLink = document.createElement('a');
+                settingsLink.href = '#settings';
+                settingsLink.className = 'nav-link';
+                settingsLink.textContent = 'Settings';
+                settingsLink.onclick = (e) => {
+                    e.preventDefault();
+                    openSettings();
+                };
+                nav.appendChild(settingsLink);
+            }
+        });
+        
         // App State
         let currentIndex = 0;
         let properties = [];
@@ -444,8 +800,7 @@
                 `;
                 
                 // Call new multi-neighborhood endpoint
-                const response = await fetch('/api/properties');
-                const data = await response.json();
+                const response = await fetch(`/api/properties?neighborhoods=${encodeURIComponent(JSON.stringify(userSettings.neighborhoods))}`);                const data = await response.json();
                 
                 if (data.results && data.results.length > 0) {
                     console.log(`Found ${data.results.length} total properties!`);
