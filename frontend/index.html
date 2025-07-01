@@ -432,18 +432,43 @@
             }
         }
 
-        // Fetch properties (with CORS handling)
+        // Fetch properties from backend
         async function fetchProperties() {
-            // For now, we'll use mock data to avoid CORS issues
-            // In production, this would call your backend server
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    properties = mockProperties;
-                    resolve();
-                }, 1000);
-            });
+            try {
+                console.log('Fetching real properties...');
+                
+                // Call your Vercel API
+                const response = await fetch('/api/zillow-search?location=Palo%20Alto,%20CA&priceMin=1800000&priceMax=2300000');
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    console.log(`Found ${data.results.length} real properties!`);
+                    
+                    // Transform Zillow data to our format
+                    properties = data.results.map(prop => ({
+                        id: prop.zpid,
+                        price: prop.price || 0,
+                        address: prop.streetAddress || prop.address || 'No address',
+                        city: prop.city || 'Bay Area',
+                        image: prop.imgSrc || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
+                        beds: prop.bedrooms || 3,
+                        baths: prop.bathrooms || 2,
+                        sqft: prop.livingArea || 2000,
+                        match: Math.floor(Math.random() * 15) + 80  // 80-95% match
+                    }));
+                    
+                    return Promise.resolve();
+                } else {
+                    throw new Error('No properties found');
+                }
+            } catch (error) {
+                console.error('Error fetching properties:', error);
+                // Fallback to mock data
+                properties = mockProperties;
+                return Promise.resolve();
+            }
         }
-
+        
         // Display property
         function displayProperty(index) {
             if (index >= properties.length) {
