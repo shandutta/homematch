@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Database</title>
+</head>
+<body>
+    <h1>Test Supabase</h1>
+    <button onclick="testSwipe()">Send Test Swipe</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testSwipe() {
+            const result = document.getElementById('result');
+            result.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('/api/swipe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        zpid: 'test-' + Date.now(),
+                        vote: true,
+                        propertyData: {
+                            address: '123 Test St',
+                            city: 'Test City',
+                            price: 2000000,
+                            beds: 3,
+                            baths: 2,
+                            sqft: 2000
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                result.textContent = '✓ ' + data.message;
+            } catch (error) {
+                result.textContent = '✗ Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
